@@ -10,6 +10,13 @@ import aiss.grupo6.dailymotionMiner.repository.ChannelRepository;
 import aiss.grupo6.dailymotionMiner.service.CaptionService;
 import aiss.grupo6.dailymotionMiner.service.ChannelService;
 import aiss.grupo6.dailymotionMiner.service.VideoService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -19,6 +26,10 @@ import org.springframework.web.client.HttpClientErrorException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Tag(
+        name = "Channel",
+        description = "Integration for an standardized model for channels in DailyMotion using its resource API"
+)
 @RestController
 @RequestMapping("/dailymotionminer")
 public class ChannelController {
@@ -43,8 +54,20 @@ public class ChannelController {
     private String internalError;
 
     //GET http://localhost:8083/dailymotionminer/{id}
+    @Operation(
+            summary = "Retrieve a Channel by Id",
+            description = "Get a Channel object by its id, notice it will never have comments due to its removal from DailyMotion",
+            tags = {"channels", "get"}
+    )
+
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", content = { @Content(schema = @Schema(implementation = VMChannel.class), mediaType = "application/json") }, description = "Everything was fine"),
+            @ApiResponse(responseCode = "404", content = @Content(schema = @Schema()), description = "API could not find data for that id, check format of id"),
+            @ApiResponse(responseCode = "500", content = @Content(schema = @Schema()), description = "API may not be accessible at the moment, please try again later or check connections")
+    })
     @GetMapping("/{id}")
-    public VMChannel findChannel(@PathVariable String id, @RequestParam(required = false) Integer maxVideos) throws Exception{
+    public VMChannel findChannel(@Parameter(required = true, description = "Id of the channel to search") @PathVariable String id,
+                                 @Parameter(description = "Maximum number of videos to get from the channel") @RequestParam(required = false) Integer maxVideos) throws Exception{
         try {
             VMChannel result = this.channelService.findChannelById(id);
             List<VMVideo> videosCanal = this.videoService.indexVideosById(id, maxVideos);
@@ -69,9 +92,21 @@ public class ChannelController {
     }
 
     //POST http://localhost:8083/dailymotionminer/{id}
+    @Operation(
+            summary = "Upload a Channel by Id",
+            description = "Upload a Channel object by its id into the H2 local database, notice this object will have an empty comments array",
+            tags = {"channels", "post"}
+    )
+
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", content = { @Content(schema = @Schema(implementation = VMChannel.class), mediaType = "application/json") }, description = "Everything was fine"),
+            @ApiResponse(responseCode = "404", content = @Content(schema = @Schema()), description = "API could not find data for that id, check format of id"),
+            @ApiResponse(responseCode = "500", content = @Content(schema = @Schema()), description = "API or database may not be accessible at the moment, please try again later or check connections")
+    })
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/{id}")
-    public VMChannel createChannel(@PathVariable String id, @RequestParam(required = false) Integer maxVideos) throws Exception{
+    public VMChannel createChannel(@Parameter(required = true, description = "Id of the channel to search") @PathVariable String id,
+                                   @Parameter(description = "Maximum number of videos to get from the channel") @RequestParam(required = false) Integer maxVideos) throws Exception{
         VMChannel canal = findChannel(id, maxVideos);
         canal = channelRepository.save(canal);
         return canal;
