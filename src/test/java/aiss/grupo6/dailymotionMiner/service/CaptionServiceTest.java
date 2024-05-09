@@ -36,20 +36,12 @@ public class CaptionServiceTest {
             }
         }
     }
-    @Test
-    @DisplayName("Channel not found exception")
-    public void invalidChannelId() {
-        try {
-            List<VMCaption> canalInvalido = service.indexCaptionsByVideoId("2");
-        } catch(HttpClientErrorException e){
-            assertEquals(e.getStatusCode(), HttpStatus.NOT_FOUND);
-        }
-    }
+
     @Test
     @DisplayName("Video not found exception")
     public void invalidVideoId() {
         try {
-            List<VMCaption> videoInvalido = service.indexCaptionsByVideoId("12346");
+            List<VMCaption> videoInvalido = service.indexCaptionsByVideoId("123");
         } catch(HttpClientErrorException e){
             assertEquals(e.getStatusCode(), HttpStatus.NOT_FOUND);
         }
