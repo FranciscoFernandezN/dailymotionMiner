@@ -6,7 +6,6 @@ import aiss.grupo6.dailymotionMiner.database.VMComment;
 import aiss.grupo6.dailymotionMiner.database.VMVideo;
 import aiss.grupo6.dailymotionMiner.exception.ChannelNotFoundException;
 import aiss.grupo6.dailymotionMiner.exception.InternalErrorException;
-import aiss.grupo6.dailymotionMiner.repository.ChannelRepository;
 import aiss.grupo6.dailymotionMiner.service.CaptionService;
 import aiss.grupo6.dailymotionMiner.service.ChannelService;
 import aiss.grupo6.dailymotionMiner.service.VideoService;
@@ -19,9 +18,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,8 +38,7 @@ import java.util.List;
 public class ChannelController {
 
     @Autowired
-    private ChannelRepository channelRepository;
-
+    RestTemplate restTemplate;
 
     @Autowired
     private ChannelService channelService;
@@ -52,6 +54,9 @@ public class ChannelController {
 
     @Value( "${message.internalError}" )
     private String internalError;
+
+    @Value( "${videominer.uri}" )
+    private String videominerUri;
 
     //GET http://localhost:8083/dailymotionminer/{id}
     @Operation(
@@ -108,7 +113,20 @@ public class ChannelController {
     public VMChannel createChannel(@Parameter(required = true, description = "Id of the channel to search") @PathVariable String id,
                                    @Parameter(description = "Maximum number of videos to get from the channel") @RequestParam(required = false) Integer maxVideos) throws Exception{
         VMChannel canal = findChannel(id, maxVideos);
-        canal = channelRepository.save(canal);
+        try {
+            HttpEntity<VMChannel> request = new HttpEntity<>(canal);
+            ResponseEntity<VMChannel> response = restTemplate.exchange(videominerUri, HttpMethod.POST, request, VMChannel.class);
+            canal = response.getBody();
+        } catch(HttpClientErrorException e) {
+            if(e.getStatusCode().equals(HttpStatus.NOT_FOUND)){
+                throw new ChannelNotFoundException(channelError);
+            }else{
+                throw new InternalErrorException(internalError);
+            }
+
+        } catch (RuntimeException e) {
+            throw new InternalErrorException(internalError);
+        }
         return canal;
     }
 
